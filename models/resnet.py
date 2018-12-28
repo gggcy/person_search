@@ -11,6 +11,7 @@ import math
 import torch.utils.model_zoo as model_zoo
 
 import yaml
+from models.non_local import NONLocalBlock2D
 
 
 __all__ = ['ResNet', 'MyResNet', 'resnet18', 'resnet34', 'resnet50',
@@ -218,6 +219,8 @@ class MyResNet:
         elif num_layers == 50:
             self.net_conv_channels = 1024
             self.fc7_channels = 2048
+           # add non local layer
+            self.non_local = NONLocalBlock2D(1024)
             if not pre_model:
                 self.model = resnet50()
             elif pre_model == 'official':
@@ -271,7 +274,7 @@ class MyResNet:
         head = nn.Sequential(self.model.conv1, self.model.bn1,
                              self.model.relu, self.model.maxpool,
                              self.model.layer1, self.model.layer2,
-                             layer3_head)
+                             layer3_head, self.non_local)
         tail = nn.Sequential(layer3_tail, self.model.layer4)
 
         return head, tail
