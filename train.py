@@ -110,6 +110,21 @@ def train_model(dataloader, net, optimizer, epoch, criterion,criterion_cent, opt
 
             losses = [x + y for x, y in zip(p_det_loss, n_det_loss)]
             losses.append(reid_loss)
+
+        else:
+            im = im.to(device)
+            gt_boxes = gt_boxes.squeeze(0).to(device)
+            im_info = im_info.ravel()
+
+            data_time.update(time.time() - data_time_end)
+            train_time_end = time.time()
+
+            det_loss, feat, label = net(im, gt_boxes, im_info)
+            feat = func.normalize(feat)
+            reid_loss = oim_loss(feat, label, net.lut, net.queue,
+                                 gt_boxes.size(0), net.lut_momentum)
+            losses = list(det_loss)
+            losses.append(reid_loss)
             # Add Center loss to GT boxes
             mask2 = (label.squeeze() != -1).nonzero(
             ).squeeze().view(-1)
@@ -125,21 +140,7 @@ def train_model(dataloader, net, optimizer, epoch, criterion,criterion_cent, opt
                 label_fit = label.squeeze(1)
                 loss_center = criterion_cent(feat,label_fit)
                 losses.append(loss_center*alpha)
-        else:
-            im = im.to(device)
-            gt_boxes = gt_boxes.squeeze(0).to(device)
-            im_info = im_info.ravel()
-
-            data_time.update(time.time() - data_time_end)
-            train_time_end = time.time()
-
-            det_loss, feat, label = net(im, gt_boxes, im_info)
-            feat = func.normalize(feat)
-            reid_loss = oim_loss(feat, label, net.lut, net.queue,
-                                 gt_boxes.size(0), net.lut_momentum)
-            losses = list(det_loss)
-            losses.append(reid_loss)
-
+                
         # Backward
         optimizer.zero_grad()
         optimizer_centloss.zero_grad()
