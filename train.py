@@ -16,6 +16,7 @@ from dataset.sipn_dataset import SIPNDataset, sipn_fn, \
 import dataset.sipn_transforms as sipn_transforms
 from models.model import SIPN
 from utils.losses import TripletLoss, oim_loss
+from utils.center_loss import CenterLoss
 
 
 def parse_args():
