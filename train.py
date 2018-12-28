@@ -1,10 +1,3 @@
-# -----------------------------------------------------
-# Train Spatial Invariant Person Search Network
-#
-# Author: Liangqi Li
-# Creating Date: Mar 31, 2018
-# Latest rectified: Nov 5, 2018
-# -----------------------------------------------------
 import os
 import time
 import shutil
@@ -54,13 +47,16 @@ def parse_args():
                         help='Epoch step to resume training the model')
     parser.add_argument('--loss', default='oim', type=str,
                         help='The loss to train the model, `oim` or `tri`')
-
+    parser.add_argument('--value', default=0.005, type=float,
+                        help='The loss to train the model, `oim` or `tri`')
+    parser.add_argument('--labels', default=483, type=int,
+                        help=' How many Labels of GT boxes enter in center loss, PRW 483, CUHK-SYSU 5532')
     args = parser.parse_args()
 
     return args
 
 
-def train_model(dataloader, net, optimizer, epoch, criterion):
+def train_model(dataloader, net, optimizer, epoch, criterion,criterion_cent, optimizer_centloss, alpha=0.05):
     """Train the model"""
 
     lr = optimizer.param_groups[0]['lr']
@@ -113,6 +109,21 @@ def train_model(dataloader, net, optimizer, epoch, criterion):
 
             losses = [x + y for x, y in zip(p_det_loss, n_det_loss)]
             losses.append(reid_loss)
+            # Add Center loss to GT boxes
+            mask2 = (label.squeeze() != -1).nonzero(
+            ).squeeze().view(-1)
+            mask1 =(label.squeeze() != net.num_pid).nonzero(
+            ).squeeze().view(-1)
+            mask = [val for val in mask1 if val in mask2]
+            mask = torch.Tensor(mask).long().cuda()
+            if len(mask)==0:
+                pass
+            else:
+                label =label[mask]
+                feat = feat[mask]
+                label_fit = label.squeeze(1)
+                loss_center = criterion_cent(feat,label_fit)
+                losses.append(loss_center*alpha)
         else:
             im = im.to(device)
             gt_boxes = gt_boxes.squeeze(0).to(device)
@@ -130,9 +141,14 @@ def train_model(dataloader, net, optimizer, epoch, criterion):
 
         # Backward
         optimizer.zero_grad()
+        optimizer_centloss.zero_grad()
         sum_loss = sum(losses)
         sum_loss.backward()
         optimizer.step()
+        # Six Cost function together 
+        for param in criterion_cent.parameters():
+            param.grad.data *= (1. / alpha)
+        optimizer_centloss.step()
 
         # Compute average loss and average time over all iterations
         current_loss = sum_loss.item()
@@ -148,6 +164,10 @@ def train_model(dataloader, net, optimizer, epoch, criterion):
             print('>>>> cls: {:.6f}'.format(losses[2].item()))
             print('>>>> box: {:.6f}'.format(losses[3].item()))
             print('>>>> reid: {:.6f}'.format(losses[4].item()))
+            if len(losses) == 6:
+                print('>>>> center_loss: {:.6f}'.format(losses[5].item()))
+            else:
+                pass
             print('Data Average time: {:.3f}s/iter'.format(data_time.avg))
             print('Training Average time: {:.3f}s/iter'.format(train_time.avg))
             print('Total Average time: {:.3f}s/iter'.format(total_time.avg))
@@ -258,7 +278,9 @@ def main():
         optimizer = torch.optim.Adam(params)
     else:
         raise KeyError(opt.optimizer)
-
+    criterion_cent = CenterLoss(num_classes=opt.labels, feat_dim=256)
+    optimizer_centloss = torch.optim.SGD(criterion_cent.parameters(), lr=0.5)
+    
     global total_loss
     global data_time
     global train_time
@@ -287,7 +309,7 @@ def main():
         epoch_start = time.time()
         model.train()
 
-        train_model(dataloader, model, optimizer, epoch, criterion)
+        train_model(dataloader, model, optimizer, epoch, criterion, criterion_cent, optimizer_centloss, alpha=opt.value)
         scheduler.step()
         try:
             collate_fn.called_times = 0
