@@ -1,2 +1,2 @@
-# Spatial Invariant Person Search Network
+Based on self-attention and online instance aggregation matching for person search
 
