@@ -1,10 +1,3 @@
-# -----------------------------------------------------
-# Person Search Architecture -- Resnet
-#
-# Author: Liangqi Li and Xinlei Chen
-# Creating Date: Apr 1, 2018
-# Latest rectifying: Oct 27, 2018
-# -----------------------------------------------------
 import torch
 import torch.nn as nn
 import math
