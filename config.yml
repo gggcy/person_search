@@ -8,8 +8,8 @@ pixel_means: [102.9801, 115.9465, 122.7717]
 res50_fixed_blocks: 1
 dense121_fixed_blocks: 1
 rpn_channels: 512
-anchor_scales: [8, 16, 32]
-anchor_ratios: [0.5, 1, 2]
+anchor_scales: [2,4,8,10,16,32]
+anchor_ratios: [0.9,1.4,1.9,2.3,2.5,2.7,2.9,3.1,3.5,4.0,4.6,5.2]
 rpn_feat_stride: [16]
 pooling_size: 7
 
