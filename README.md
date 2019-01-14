@@ -1,2 +1,1 @@
-Based on self-attention and online instance aggregation matching for person search
-
+Structure-Aware Person Search with Self-Attention and Online Instance Aggregation Matching
